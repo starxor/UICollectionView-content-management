@@ -21,7 +21,7 @@ class CollectionViewDataSource: NSObject, UICollectionViewDataSource {
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        guard let item = items[indexPath.row]?[indexPath.section] else {
+        guard let item = items[indexPath.section]?[indexPath.row] else {
             return collectionView.dequeueReusableCell(withReuseIdentifier: defaultReuseIdentifire, for: indexPath)
         }
         
@@ -34,9 +34,7 @@ class CollectionViewDataSource: NSObject, UICollectionViewDataSource {
         
         return cell
     }
-}
-
-extension CollectionViewDataSource {
+    
     // MARK: Cell reuse data
     
     /// Идентификатор по умолчанию. Для ячеек - заглушек.

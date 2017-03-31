@@ -14,6 +14,7 @@ class CollectionViewDataController {
     init(collectionView cview: UICollectionView, dataSource source: CollectionViewDataSource) {
         collectionView = cview
         dataSource = source
+        collectionView.dataSource = dataSource
     }
 }
 
@@ -38,6 +39,14 @@ extension CollectionViewDataController {
         add(items: items, to: section, completion: nil)
     }
     
+    func add(items: [CollectionItem], toBeginingOf section: SectionIndex) {
+        add(items: items, to: section, position: .begining, originalItemIndexes: [], completion: nil)
+    }
+    
+    func add(items: [CollectionItem], to section: SectionIndex, completion: CollectionViewUpdateCompletionHandler?) {
+        add(items: items, to: section, position: .end, originalItemIndexes: [], completion: completion)
+    }
+    
     func add(items: [CollectionItem], to section: SectionIndex, position: PositionInSection, originalItemIndexes: [Int],
              completion: CollectionViewUpdateCompletionHandler?) {
         var existing = dataSource.items[section] ?? []
@@ -55,19 +64,24 @@ extension CollectionViewDataController {
         case .savingIndex:
             if existing.count == 0 {
                 existing.append(contentsOf: items)
-            } else if existing.count >= items.count {
-                _ = (0..<items.count).map { existing.insert(items[$0], at: originalItemIndexes[$0]) }
+            } else {
+                _ = (0..<items.count).map {
+                    var index = originalItemIndexes[$0]
+                    if index > existing.count {
+                        index = existing.count
+                    }
+                    
+                    existing.insert(items[$0], at: index)
+                }
             }
         }
+        
+        dataSource.items[section] = existing
         
         collectionView.performBatchUpdates(
             { [unowned self] in self.collectionView.insertItems(at: newIndexPaths) }
             ,completion: completion
         )
-    }
-    
-    func add(items: [CollectionItem], to section: SectionIndex, completion: CollectionViewUpdateCompletionHandler?) {
-        
     }
 }
 
@@ -81,7 +95,7 @@ extension CollectionViewDataController {
         let pathsToDelete: [IndexPath]
         
         guard
-            let existing = dataSource.items[section],
+            var existing = dataSource.items[section],
             let _ = existing.first,
             let _ = existing.last
             else {
@@ -100,6 +114,11 @@ extension CollectionViewDataController {
         
         let rows = items.map { existing.index(of: $0)! }
         pathsToDelete = rows.map { IndexPath(row: $0, section: section) }
+        for item in items {
+            existing.remove(at: existing.index(of: item)!)
+        }
+        
+        dataSource.items[section] = existing
         
         collectionView.performBatchUpdates(
             { [unowned self] in self.collectionView.deleteItems(at: pathsToDelete) },
@@ -148,7 +167,10 @@ extension CollectionViewDataController {
         let range: CountableRange<Int>
         let count = items.count
         
-        assert(items.count == originalItemIndexes.count, "Items count must be equal to originalItemIndexes count!")
+        if position == .savingIndex {
+            assert(items.count == originalItemIndexes.count, "Items count must be equal to originalItemIndexes count!")
+        }
+        
         
         switch position {
         case .begining:
@@ -160,7 +182,17 @@ extension CollectionViewDataController {
             newIndexPaths = range.map { IndexPath(row: $0, section: section) }
         case .savingIndex:
             let itemsRange = 0..<items.count
-            newIndexPaths = itemsRange.map { IndexPath(row: originalItemIndexes[$0], section: section) }
+            var eCount = existingItems.count
+            var sortedIndexes = originalItemIndexes.sorted()
+            newIndexPaths = itemsRange.map {
+                var index = sortedIndexes[$0]
+                if index > eCount {
+                    // добавляем в конец
+                    index = eCount
+                }
+                eCount += 1
+                return IndexPath(row: index, section: section)
+            }
             break
         }
         

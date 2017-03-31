@@ -25,3 +25,14 @@ extension CollectionItemContent: Equatable {
         }
     }
 }
+
+extension CollectionItemContent {
+    var string: String? {
+        switch self {
+        case .text(let string):
+            return string
+        default:
+            return nil
+        }
+    }
+}
